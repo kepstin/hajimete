@@ -40,7 +40,7 @@ int udev_init(void)
 	printf("Starting udevd.\n");
 	pid = fork();
 	if (!pid) {
-		err = execl("/sbin/udevd", "/sbin/udevd", (char *) NULL);
+		err = execl("/sbin/udevd", "/sbin/udevd", "--debug", (char *) NULL);
 		if (err)
 			printf("Failed to start udevd: %s\n", strerror(errno));
 		return 1;
@@ -51,13 +51,13 @@ int udev_init(void)
 	udevd_pid = pid;
 	
 	printf("Triggering events.\n");
-	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "trigger", (char *) NULL);
+	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "-d", "trigger", (char *) NULL);
 	if (err) {
 		printf("Failed to trigger udev events\n");
 		return -1;
 	}
 	printf("Waiting for the events to propagate.\n");
-	exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "settle", (char *) NULL);
+	exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "-d", "settle", (char *) NULL);
 	
 	printf("You should now have all your device nodes.\n");
 	return 0;

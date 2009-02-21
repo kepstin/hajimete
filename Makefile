@@ -3,6 +3,7 @@ CFLAGS += -Wall
 init_OBJECTS = exec.o \
 	       init.o \
 	       kernel_param.o \
+	       rescue.o \
 	       udev.o
 
 all: initramfs_data.cpio
