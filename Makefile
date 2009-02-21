@@ -1,7 +1,9 @@
 CFLAGS += -Wall
 
-init_OBJECTS = init.o \
-	       kernel_param.o
+init_OBJECTS = exec.o \
+	       init.o \
+	       kernel_param.o \
+	       udev.o
 
 all: initramfs_data.cpio
 
@@ -13,4 +15,6 @@ initramfs_data.cpio: gen_init_cpio init initramfs_contents
 
 
 kernel_param.c: kernel_param.h
-init.c: kernel_param.h
+exec.c: exec.h
+udev.c: udev.h
+init.c: kernel_param.h udev.h exec.h

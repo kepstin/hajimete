@@ -18,6 +18,7 @@
  */
 
 #include "kernel_param.h"
+#include "udev.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,11 +37,13 @@ extern char **environ;
 static char cmdline[CMDLINE_LENGTH];
 
 static struct kernel_param param_root = { "root" };
-static struct kernel_param param_ls = { "ls" };
+static struct kernel_param param_ls = { "ls", "/dev" };
+static struct kernel_param param_init = { "init", "/sbin/init" };
 
 static struct kernel_param *params[] = {
 	&param_root,
 	&param_ls,
+	&param_init,
 	NULL
 };
 
@@ -71,6 +74,7 @@ int main(int argc, char *argv[])
 {
 	int err, status;
 	pid_t pid;
+	char root[128];
 	
 	printf("\thajimemasu\n");
 		
@@ -88,68 +92,89 @@ int main(int argc, char *argv[])
 	
 	kernel_param_parse(cmdline, params);
 	
+	err = udev_init();
+	if (err) goto die;
+
 	printf("Detected root as '%s'\n", param_root.value);
 	
-	printf("Please wait while I initialize your devices...\n");
+	strncpy(root, param_root.value, 128);
+	root[127] = '\0';
+	while (1) {
+		printf("I'm now going to attempt to mount your root device.\n");
+		pid = fork();
+		if (!pid) {
+			err = execl("/bin/mount", "/bin/mount", "-o", "ro", root, "/newroot", (char *) NULL);
+			if (err)
+				printf("Failed to start mount: %s\n", strerror(errno));
+			exit(1);
+		} else if (pid == -1) {
+			printf("Could not fork: %s\n", strerror(errno));
+			goto mount_fail;
+		}
+		err = waitpid(pid, &status, 0);
+		if (err == -1) {
+			printf("Failed to wait for child: %s\n", strerror(errno));
+			goto mount_fail;
+		}
+		err = WEXITSTATUS(status);
+		if (err) {
+			printf("Failed to mount root (%d)\n", err);
+			goto mount_fail;
+		}
+		break;
+mount_fail:
+		printf("Hmm. That didn't work.\n"
+			"Try entering another root device, or 'shell' for a rescue shell\n"
+			"root> ");
+		fgets(root, 128, stdin);
+		root[strlen(root) - 1] = '\0';
+		if (strcmp(root, "shell") == 0)
+			goto die;
+	}
 	
-	printf("Starting udevd.\n");
-	pid = fork();
-	if (!pid) {
-		err = execl("/sbin/udevd", "/sbin/udevd",
-			"--daemon", (char *) NULL);
-		if (err)
-			printf("Failed to start udevd: %s\n", strerror(errno));
-		return 1;
-	} else if (pid == -1) {
-		printf("Could not fork: %s\n", strerror(errno));
+	printf("Looks good, switching to it.\n");
+
+	err = chroot("/newroot");
+	if (err) {
+		printf("Failed to chroot: %s\n", strerror(errno));
 		goto die;
 	}
-	err = waitpid(pid, &status, 0);
-	if (err == -1) {
-		printf("Failed to wait for child: %s\n", strerror(errno));
-		goto die;
+
+	udev_kill();
+
+	err = chdir("/");
+	if (err) {
+		printf("Failed to chdir to /: %s\n", strerror(errno));
+		goto die_hard;
 	}
-	printf("udevd status %d. Triggering events.\n", WEXITSTATUS(status));
-	pid = fork();
-	if (!pid) {
-		err = execl("/sbin/udevadm", "/sbin/udevadm",
-			"trigger", (char *) NULL);
-		if (err)
-			printf("Failed to start udevadm: %s\n", strerror(errno));
-		return 1;
-	} else if (pid == -1) {
-		printf("Could not fork: %s\n", strerror(errno));
-		goto die;
+	printf("And now, running your real init. From now on, it's all you.\n");
+	err = execv(param_init.value, argv);
+	if (err) {
+		printf("Failed to exec %s: %s", param_init.value, strerror(errno));
+		goto die_hard;
 	}
-	err = waitpid(pid, &status, 0);
-	if (err == -1) {
-		printf("Failed to wait for child: %s\n", strerror(errno));
-		goto die;
-	}
-	printf("udevadm status %d. Waiting for the events to propagate.\n",
-		WEXITSTATUS(status));
-	pid = fork();
-	if (!pid) {
-		err = execl("/sbin/udevadm", "/sbin/udevadm",
-			"settle", (char *) NULL);
-		if (err)
-			printf("Failed to start udevadm: %s\n", strerror(errno));
-		return 1;
-	} else if (pid == -1) {
-		printf("Could not fork: %s\n", strerror(errno));
-		goto die;
-	}
-	err = waitpid(pid, &status, 0);
-	if (err == -1) {
-		printf("Failed to wait for child: %s\n", strerror(errno));
-		goto die;
-	}
-	printf("udevadm status %d. You should now have all your device nodes.\n",
-		WEXITSTATUS(status));
 	
 die:
-	printf("Your kernel is about to panic, have a good day.\n");
-	execl("/bin/ls", "/bin/ls", "-l",
-		param_ls.value ?: "/dev", (char *) NULL);
+	printf("An error has occured, but you may be able to recover.\n");
+	pid = fork();
+	if (!pid) {
+		err = execl("/bin/bash", "/bin/bash", (char *) NULL);
+		if (err)
+			printf("Failed to start shell: %s\n", strerror(errno));
+		return 1;
+	} else if (pid == -1) {
+		printf("Could not fork: %s\n", strerror(errno));
+		goto die_hard;
+	}
+	err = waitpid(pid, &status, 0);
+	if (err == -1) {
+		printf("Failed to wait for child: %s\n", strerror(errno));
+		goto die_hard;
+	}
+
+die_hard:
+	printf("An unrecoverable error has occurred. Please contact your distribution support\n"
+		"In your report, include as much of the above text as you can see.\n");
+	sleep(5);
 	return 1;
 }
