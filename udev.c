@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -33,14 +34,16 @@ static pid_t udevd_pid;
 int udev_init(void)
 {
 	pid_t pid;
-	int err;
+	int err, status;
+	unsigned long data;
 	
 	printf("Please wait while I initialize your devices...\n");
 	
 	printf("Starting udevd.\n");
 	pid = fork();
 	if (!pid) {
-		err = execl("/sbin/udevd", "/sbin/udevd", (char *) NULL);
+		ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+		err = execl("/sbin/udevd", "/sbin/udevd", "--daemon", (char *) NULL);
 		if (err)
 			printf("Failed to start udevd: %s\n", strerror(errno));
 		return 1;
@@ -48,7 +51,19 @@ int udev_init(void)
 		printf("Could not fork: %s\n", strerror(errno));
 		return -1;
 	}
-	udevd_pid = pid;
+	printf("Waiting for signal from ptrace.\n");
+	waitpid(pid, &status, 0);
+	printf("Got it, setting up options.\n");
+	ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACEFORK);
+	ptrace(PTRACE_CONT, pid, NULL, NULL);
+	
+	printf("Waiting for fork.\n");
+	waitpid(pid, &status, 0);
+	ptrace(PTRACE_GETEVENTMSG, pid, NULL, &data);
+	udevd_pid = data;
+	printf("udevd forked, new pid is %d\n", udevd_pid);
+	ptrace(PTRACE_DETACH, pid, NULL, NULL);
+	ptrace(PTRACE_DETACH, udevd_pid, NULL, NULL);
 	
 	printf("Triggering events.\n");
 	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "trigger", (char *) NULL);
