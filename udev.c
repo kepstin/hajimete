@@ -40,7 +40,7 @@ int udev_init(void)
 	printf("Starting udevd.\n");
 	pid = fork();
 	if (!pid) {
-		err = execl("/sbin/udevd", "/sbin/udevd", "--debug", (char *) NULL);
+		err = execl("/sbin/udevd", "/sbin/udevd", (char *) NULL);
 		if (err)
 			printf("Failed to start udevd: %s\n", strerror(errno));
 		return 1;
@@ -51,7 +51,7 @@ int udev_init(void)
 	udevd_pid = pid;
 	
 	printf("Triggering events.\n");
-	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "-d", "trigger", (char *) NULL);
+	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "trigger", (char *) NULL);
 	if (err) {
 		printf("Failed to trigger udev events\n");
 		return -1;
