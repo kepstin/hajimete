@@ -64,6 +64,12 @@ int udev_init(void)
 	printf("udevd forked, new pid is %d\n", udevd_pid);
 	ptrace(PTRACE_DETACH, pid, NULL, NULL);
 	ptrace(PTRACE_DETACH, udevd_pid, NULL, NULL);
+
+	/* Catch the original process ending */
+	waitpid(pid, &status, 0);
+
+	printf("As a temporary hack to make sure udev is running i'm going to sleep for a bit here.\n");
+	sleep(1);
 	
 	printf("Triggering events.\n");
 	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "trigger", (char *) NULL);
