@@ -12,6 +12,7 @@ slink /lib lib64 0777 0 0
 
 # Config files
 file /etc/passwd /etc/passwd 0644 0 0
+file /etc/shadow shadow 0600 0 0
 file /etc/group /etc/group 0644 0 0
 file /etc/issue issue 0644 0 0
 
@@ -23,6 +24,7 @@ file /init init 0755 0 0
 
 file /sbin/btrfsctl /sbin/btrfsctl 0755 0 0
 file /sbin/modprobe /sbin/modprobe 0755 0 0
+file /sbin/sulogin /sbin/sulogin 0755 0 0
 file /sbin/udevd /sbin/udevd 0755 0 0
 file /sbin/udevadm /sbin/udevadm 0755 0 0
 
@@ -38,17 +40,15 @@ file /bin/mount /bin/mount 0755 0 0
 
 # Library dependencies
 file /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 0755 0 0
-file /lib/libacl.so.1 /lib/libacl.so.1 0755 0 0
-file /lib/libattr.so.1 /lib/libattr.so.1 0755 0 0
 file /lib/libblkid.so.1 /lib/libblkid.so.1 0755 0 0
 file /lib/libc.so.6 /lib/libc.so.6 0755 0 0
+file /lib/libcrypt.so.1 /lib/libcrypt.so.1 0755 0 0
 file /lib/libdl.so.2 /lib/libdl.so.2 0755 0 0
 file /lib/libncurses.so.5 /lib/libncurses.so.5 0755 0 0
 file /lib/libncursesw.so.5 /lib/libncursesw.so.5 0755 0 0
 file /lib/libpthread.so.0 /lib/libpthread.so.0 0755 0 0
 file /lib/librt.so.1 /lib/librt.so.1 0755 0 0
 file /lib/libuuid.so.1 /lib/libuuid.so.1 0755 0 0
-file /lib/libz.so.1 /lib/libz.so.1 0755 0 0
 
 file /lib/libnss_files.so.2 /lib/libnss_files.so.2 0755 0 0
 
@@ -63,13 +63,3 @@ file /lib/udev/rules.d/80-drivers.rules /lib/udev/rules.d/80-drivers.rules 0644 
 
 # modules
 dir /lib/modules 0755 0 0
-dir /lib/modules/2.6.29-rc5-00133-g39fad1d 0755 0 0
-file /lib/modules/2.6.29-rc5-00133-g39fad1d/modules.dep /lib/modules/2.6.29-rc5-00133-g39fad1d/modules.dep 0644 0 0
-file /lib/modules/2.6.29-rc5-00133-g39fad1d/modules.alias /lib/modules/2.6.29-rc5-00133-g39fad1d/modules.alias 0644 0 0
-dir /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel 0755 0 0
-dir /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers 0755 0 0
-dir /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/ata 0755 0 0
-file /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/ata/ata_piix.ko /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/ata/ata_piix.ko 0644 0 0
-dir /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/net 0755 0 0
-file /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/net/ne2k-pci.ko /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/net/ne2k-pci.ko 0644 0 0
-file /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/net/8390.ko /lib/modules/2.6.29-rc5-00133-g39fad1d/kernel/drivers/net/8390.ko 0644 0 0

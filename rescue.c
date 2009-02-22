@@ -25,7 +25,5 @@
 
 int rescue(void)
 {
-	printf("\nStarting a rescue shell.\n"
-		"To resume booting, exit the shell.\n");
-	return exec_run_wait("/bin/bash", "/bin/bash", (char *) NULL);
+	return exec_run_wait("/sbin/sulogin", "/sbin/sulogin", (char *) NULL);
 }
