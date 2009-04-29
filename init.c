@@ -117,16 +117,16 @@ int main(int argc, char *argv[])
 			root[strlen(root) - 1] = '\0';
 		}
 	}
-	
+
 	printf("Looks good, switching to it.\n");
+
+	udev_kill();
 
 	err = chroot("/newroot");
 	if (err) {
 		printf("Failed to chroot: %s\n", strerror(errno));
 		goto die_hard;
 	}
-
-	udev_kill();
 
 	err = chdir("/");
 	if (err) {

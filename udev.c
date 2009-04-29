@@ -22,63 +22,32 @@
 #include "exec.h"
 
 #include <errno.h>
-#include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-static pid_t udevd_pid;
-
 int udev_init(void)
 {
-	pid_t pid;
-	int err, status;
-	unsigned long data;
+	int err;
 	
 	printf("Please wait while I initialize your devices...\n");
 	
 	printf("Starting udevd.\n");
-	pid = fork();
-	if (!pid) {
-		ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		err = execl("/sbin/udevd", "/sbin/udevd", "--daemon", (char *) NULL);
-		if (err)
-			printf("Failed to start udevd: %s\n", strerror(errno));
-		return 1;
-	} else if (pid == -1) {
-		printf("Could not fork: %s\n", strerror(errno));
+	err = exec_run_wait("/sbin/start-stop-daemon", "/sbin/start-stop-daemon", "--start", "--exec", "/sbin/udevd", "--", "--daemon", (char *) NULL);
+	if (err) {
+		printf("Failed to start udevd\n");
 		return -1;
 	}
-	printf("Waiting for signal from ptrace.\n");
-	waitpid(pid, &status, 0);
-	printf("Got it, setting up options.\n");
-	ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACEFORK);
-	ptrace(PTRACE_CONT, pid, NULL, NULL);
-	
-	printf("Waiting for fork.\n");
-	waitpid(pid, &status, 0);
-	ptrace(PTRACE_GETEVENTMSG, pid, NULL, &data);
-	udevd_pid = data;
-	printf("udevd forked, new pid is %d\n", udevd_pid);
-	ptrace(PTRACE_DETACH, pid, NULL, NULL);
-	ptrace(PTRACE_DETACH, udevd_pid, NULL, NULL);
 
-	/* Catch the original process ending */
-	waitpid(pid, &status, 0);
-
-	printf("As a temporary hack to make sure udev is running i'm going to sleep for a bit here.\n");
-	sleep(1);
-	
 	printf("Triggering events.\n");
-	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "trigger", (char *) NULL);
+	err = exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "--debug", "trigger", (char *) NULL);
 	if (err) {
 		printf("Failed to trigger udev events\n");
 		return -1;
 	}
 	printf("Waiting for the events to propagate.\n");
-	exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "-d", "settle", (char *) NULL);
+	exec_run_wait("/sbin/udevadm", "/sbin/udevadm", "--debug", "settle", "--timeout=0", (char *) NULL);
 	
 	printf("You should now have all your device nodes.\n");
 	return 0;
@@ -86,17 +55,13 @@ int udev_init(void)
 
 int udev_kill(void)
 {
-	int err, status;
+	int err;
 	
 	printf("Stopping udevd.\n");
-	
-	err = kill(udevd_pid, SIGTERM);
+	err = exec_run_wait("/sbin/start-stop-daemon", "/sbin/start-stop-daemon", "--stop", "--exec", "/sbin/udevd", (char *) NULL);
 	if (err) {
-		printf("Failed to kill udevd: %s\n", strerror(errno));
-		return err;
+		printf("Failed to stop udevd\n");
+		return -1;
 	}
-	err = waitpid(udevd_pid, &status, 0);
-	if (err == -1)
-		return err;
 	return 0;
 }
